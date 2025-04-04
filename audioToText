@@ -5,14 +5,14 @@ import torch
 
 # --- Configuration ---
 # 📂 **SET THE PATH TO YOUR FOLDER CONTAINING AUDIO FILES HERE**
-input_folder_path = "/Users/angrytardigrades/Documents/Work/Programing/python/Interview_transcribe/Interview_audio_files" # <--- CHANGE THIS
+input_folder_path = "PATH TO AUDIO FILES" # <--- CHANGE THIS
 
-# ✅ Choose Whisper model size (e.g., "tiny", "base", "small", "medium", "large")
+# ✅ Choose Whisper model size (e.g., "tiny", "base", "small", "medium", "large") --- > Large is heavy try small / medium or even smaller models 
 #    Smaller models are faster but less accurate. "medium" is a good balance.
 model_size = "medium"
 
 # ✅ Define supported audio file extensions
-supported_extensions = ('.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac') # Add more if needed
+supported_extensions = ('.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac') # Add more if needed -- > .WAV is really good
 
 # --- Setup ---
 # ✅ Auto-detect GPU if available, else use CPU
