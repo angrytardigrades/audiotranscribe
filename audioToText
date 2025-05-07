@@ -3,104 +3,52 @@ import os
 import time
 import torch
 
-# --- Configuration ---
-# 📂 **SET THE PATH TO YOUR FOLDER CONTAINING AUDIO FILES HERE**
-input_folder_path = "PATH TO AUDIO FILES" # <--- CHANGE THIS
-
-# ✅ Choose Whisper model size (e.g., "tiny", "base", "small", "medium", "large") --- > Large is heavy try small / medium or even smaller models 
-#    Smaller models are faster but less accurate. "medium" is a good balance.
-model_size = "medium"
-
-# ✅ Define supported audio file extensions
-supported_extensions = ('.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac') # Add more if needed -- > .WAV is really good
-
-# --- Setup ---
 # ✅ Auto-detect GPU if available, else use CPU
 device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"\U0001F4E5 Loading Whisper model ('{model_size}') on {device.upper()}...")
+print(f"\U0001F4E5 Loading Whisper model on {device.upper()}...")
 
-# ✅ Load Whisper model
-try:
-    model = whisper.load_model(model_size, device=device)
-    print(f"✅ Model '{model_size}' loaded successfully!\n")
-except Exception as e:
-    print(f"❌ Error loading Whisper model: {e}")
-    print("Please ensure Whisper and its dependencies (like ffmpeg) are installed correctly.")
-    exit() # Exit if model loading fails
+# ✅ Load Whisper model (use "small" for faster speed if needed)
+model_size = "medium"
+model = whisper.load_model(model_size, device=device)
+print(f"✅ Model '{model_size}' loaded successfully!\n")
 
-# ✅ Check if input folder exists
-if not os.path.isdir(input_folder_path):
-    raise FileNotFoundError(f"❌ Error: Input folder not found at {input_folder_path}")
+# 🎙️ **SET YOUR AUDIO FILE PATH HERE**
+audio_path = "YOUR AUDIO FILE PATH - EXACT PATH"
 
-# ✅ Create output directory inside the input folder
-output_dir = os.path.join(input_folder_path, "output_transcriptions")
+# ✅ Check if file exists
+if not os.path.exists(audio_path):
+    raise FileNotFoundError(f"❌ Error: Audio file not found at {audio_path}")
+
+# ✅ Create output directory
+output_dir = os.path.join(os.path.dirname(audio_path), "OUTPUT PATH")
 os.makedirs(output_dir, exist_ok=True)
-print(f"📂 Transcriptions will be saved in: {output_dir}\n")
 
-# --- Processing Loop ---
-total_start_time = time.time()
-files_processed = 0
-files_skipped = 0
+# ✅ Generate output file name
+output_file = os.path.join(output_dir, os.path.basename(audio_path).replace(".mp3", ".txt"))
 
-print("--- Starting Batch Transcription ---")
+try:
+    print("🎙️ Transcription in progress... (this may take a while)\n")
 
-# ✅ Iterate through all files in the specified folder
-for filename in os.listdir(input_folder_path):
-    # Construct full file path
-    input_file_path = os.path.join(input_folder_path, filename)
+    # ⏳ Start timer
+    start_time = time.time()
 
-    # ✅ Check if it's a file and has a supported audio extension
-    if os.path.isfile(input_file_path) and filename.lower().endswith(supported_extensions):
-        print(f"\n▶️ Processing file: {filename}")
-        files_processed += 1
+    # ✅ Transcribe audio (no timestamps)
+    result = model.transcribe(audio_path, word_timestamps=False, verbose=True)  
 
-        # ✅ Generate output file name (replace audio extension with .txt)
-        base_name, _ = os.path.splitext(filename)
-        output_file_path = os.path.join(output_dir, f"{base_name}.txt")
+    # ⏱️ End timer
+    elapsed_time = time.time() - start_time
 
-        try:
-            print("  🎙️ Transcribing... (this may take a while)")
+    # ✅ Ensure transcription has content
+    if "text" not in result or not result["text"].strip():
+        raise ValueError("❌ No transcription found! Check if the audio has clear speech.")
 
-            # ⏳ Start timer for this file
-            file_start_time = time.time()
+    # ✅ Save transcription (no timestamps)
+    print(f"📄 Saving transcription to: {output_file}")
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(result["text"] + "\n")
 
-            # ✅ Transcribe audio (adjust parameters as needed)
-            #    word_timestamps=False for faster processing if you don't need word timings
-            #    verbose=True prints progress during transcription
-            result = model.transcribe(input_file_path, word_timestamps=False, verbose=False) # Set verbose=True for more detail
+    print(f"\n✅ Transcription finished in {elapsed_time:.2f} seconds.")
+    print(f"📂 Transcription saved at: {output_file}")
 
-            # ⏱️ End timer for this file
-            file_elapsed_time = time.time() - file_start_time
-
-            # ✅ Ensure transcription has content
-            transcription_text = result.get("text", "").strip()
-            if not transcription_text:
-                print(f"  ⚠️ Warning: No transcription text found for {filename}. Skipping saving.")
-                continue # Skip to the next file
-
-            # ✅ Save transcription
-            print(f"  📄 Saving transcription to: {output_file_path}")
-            with open(output_file_path, "w", encoding="utf-8") as f:
-                f.write(transcription_text + "\n") # Add newline at the end
-
-            print(f"  ✅ Finished '{filename}' in {file_elapsed_time:.2f} seconds.")
-
-        except FileNotFoundError:
-             print(f"  ❌ Error: File not found during processing (should not happen): {filename}")
-        except Exception as e:
-            print(f"  ❌ Error during transcription for {filename}: {e}")
-            # Optionally, decide if you want to stop or continue with the next file
-
-    elif os.path.isfile(input_file_path):
-        # Optional: Log files that are skipped because of their extension
-        # print(f"  ⚪ Skipping non-audio file: {filename}")
-        files_skipped += 1
-    # else: it's a directory, ignore it
-
-# --- Summary ---
-total_elapsed_time = time.time() - total_start_time
-print("\n--- Batch Transcription Complete ---")
-print(f"📊 Processed {files_processed} audio file(s).")
-print(f"⚪ Skipped {files_skipped} non-audio file(s).")
-print(f"⏱️ Total processing time: {total_elapsed_time:.2f} seconds.")
-print(f"📂 All transcriptions saved in: {output_dir}")
+except Exception as e:
+    print(f"\n❌ Error during transcription: {e}")
